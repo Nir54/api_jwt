@@ -2,8 +2,11 @@
 
 composer install
 
-mkdir config\jwt
+mkdir -p config\jwt
 
 Copy JWT_PASSPHRASE in env after execute 
 openssl genrsa -out config/jwt/private.pem -aes256 4096
+
+Copy JWT_PASSPHRASE in env after execute 
+openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem
 

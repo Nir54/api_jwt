@@ -202,10 +202,11 @@ class UserController extends AbstractController
      * Modification utilisateur
      * 
      * @Route("/user/{token}", name="update_user", methods="PUT")
+     * @param Request $request
      *
      * @return JsonResponse
      */
-    public function update_user($token): JsonResponse
+    public function update_user($token, Request $request, SerializerInterface $serializer): JsonResponse
     {
         try {
             $userToken = $this->userTokeRepo->findOneBy(["users_token_access" => $token]);
@@ -217,12 +218,22 @@ class UserController extends AbstractController
                 ],401);
             }
 
-            $this->em->remove($userToken);
+            $users_post = $serializer->deserialize($request->getContent(), User::class, 'json');
+
+            $users = $this->userRepo->find($userToken->getUserId()->getId());
+
+            $users->setUpdatedAt(new \DateTimeImmutable('NOW', new \DateTimeZone('Africa/Nairobi')));
+            $users->setFirstname($users_post->getFirstname());
+            $users->setLastname($users_post->getLastname());
+            $users->setEmail($users_post->getEmail());
+            $users->setDateNaissance($users_post->getDateNaissance());
+            $users->setSexe($users_post->getSexe());
+
             $this->em->flush();
 
             return $this->json([
                 'error' => false,
-                "message" => "L'utilisateur a été déconnécté avec succès"
+                "message" => "L'utilisateur a été modifié avec succès"
             ],200);
 
         } catch (NotEncodableValueException $e) {

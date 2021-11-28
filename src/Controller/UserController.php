@@ -3,6 +3,9 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Entity\UserToken;
+use App\Repository\UserRepository;
+use App\Repository\UserTokenRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,11 +24,14 @@ class UserController extends AbstractController
 {
 
 
-    public function __construct(TokenStorageInterface $tokenStorageInterface, JWTTokenManagerInterface $jwtManager, EntityManagerInterface $em)
+    public function __construct(TokenStorageInterface $tokenStorageInterface, JWTTokenManagerInterface $jwtManager, EntityManagerInterface $em, UserRepository $userRepo, UserTokenRepository $userTokeRepo)
     {
         $this->jwtManager = $jwtManager;
         $this->tokenStorageInterface = $tokenStorageInterface;
         $this->em = $em;
+        $this->userRepo = $userRepo;
+        $this->userTokeRepo = $userTokeRepo;
+
     }
 
     /**
@@ -52,7 +58,6 @@ class UserController extends AbstractController
     public function register(Request $request, SerializerInterface $serializer, ValidatorInterface $validator, UserPasswordEncoderInterface $encoder): JsonResponse
     {
         try {
-            
             $users_post = $request->getContent();
             $users = $serializer->deserialize($users_post, User::class, 'json');
             $users->setCreatedAt(new \DateTimeImmutable('NOW', new \DateTimeZone('Africa/Nairobi')));
@@ -71,6 +76,12 @@ class UserController extends AbstractController
             $acces_token = $this->jwtManager->create($users);
             $token_decode = json_decode(base64_decode(str_replace('_', '/', str_replace('-','+',explode('.', $acces_token)[1]))));
             
+            $users_token = new UserToken();
+            $users_token->setUsersTokenAccess($acces_token);
+            $users_token->setUserId($users);
+            $this->em->persist($users_token);
+            $this->em->flush();
+
             return $this->json([
                 'error' => false,
                 'message' => "L'utilisateur a bien été créé avec succèss",
@@ -109,13 +120,6 @@ class UserController extends AbstractController
      */
     public function login(): JsonResponse
     {
-        $user = $this->getUser();
-
-        return $this->json([
-            'email' => $user->getEmail(),
-            'roles' => $user->getRoles()
-        ]);
-
         return $this->json([
             'error' => false,
             'message' => "L'utilisateur a bien été créé avec succèss",
@@ -125,5 +129,107 @@ class UserController extends AbstractController
                 "createdAt" => 'date("Y-m-d H:i:s", $token_decode->iat)'
             ]
         ],200);
+    }
+
+    /**
+     * Récupération utilisateur
+     * 
+     * @Route("/user/{token}", name="get_user", methods="GET")
+     *
+     * @return JsonResponse
+     */
+    public function get_user($token): JsonResponse
+    {
+        try {
+            $userToken = $this->userTokeRepo->findOneBy(["users_token_access" => $token]);
+
+            return $this->json([
+                'error' => false,
+                "user" => [
+                    "firstname" => $userToken->getUserId()->getFirstname(),
+                    "lastname" => $userToken->getUserId()->getLastname(),
+                    "email" => $userToken->getUserId()->getEmail(),
+                    "date_naissance" => $userToken->getUserId()->getDateNaissance(),
+                    "sexe" => $userToken->getUserId()->getSexe(),
+                    "createdAt" => $userToken->getUserId()->getCreatedAt()
+                ]
+            ],200);
+
+        } catch (NotEncodableValueException $e) {
+            return $this->json([
+                "status" => 400,
+                "message" => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Suppéssion utilisateur
+     * 
+     * @Route("/user/{token}", name="get_user", methods="DELETE")
+     *
+     * @return JsonResponse
+     */
+    public function delete_user($token): JsonResponse
+    {
+        try {
+            $userToken = $this->userTokeRepo->findOneBy(["users_token_access" => $token]);
+
+            if (!$userToken) {
+                return $this->json([
+                    'error' => true,
+                    "message" => "L'utilisateur déjà déconnécté avec succès"
+                ],401);
+            }
+
+            $this->em->remove($userToken);
+            $this->em->flush();
+
+            return $this->json([
+                'error' => false,
+                "message" => "L'utilisateur a été déconnécté avec succès"
+            ],200);
+
+        } catch (NotEncodableValueException $e) {
+            return $this->json([
+                "status" => 400,
+                "message" => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Modification utilisateur
+     * 
+     * @Route("/user/{token}", name="update_user", methods="PUT")
+     *
+     * @return JsonResponse
+     */
+    public function update_user($token): JsonResponse
+    {
+        try {
+            $userToken = $this->userTokeRepo->findOneBy(["users_token_access" => $token]);
+
+            if (!$userToken) {
+                return $this->json([
+                    'error' => true,
+                    "message" => "L'utilisateur déjà déconnécté avec succès"
+                ],401);
+            }
+
+            $this->em->remove($userToken);
+            $this->em->flush();
+
+            return $this->json([
+                'error' => false,
+                "message" => "L'utilisateur a été déconnécté avec succès"
+            ],200);
+
+        } catch (NotEncodableValueException $e) {
+            return $this->json([
+                "status" => 400,
+                "message" => $e->getMessage(),
+            ], 400);
+        }
     }
 }

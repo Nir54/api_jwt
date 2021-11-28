@@ -10,6 +10,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use App\Validator as AcmeAssert;
 
 
 /**
@@ -31,13 +32,13 @@ class User implements UserInterface
 
     /**
      * @ORM\Column(type="string", length=50)
-     * )
+     * @Assert\NotBlank
      */
     private $firstname;
 
     /**
      * @ORM\Column(type="string", length=50)
-     * )
+     * @Assert\NotBlank
      */
     private $lastname;
 
@@ -49,18 +50,19 @@ class User implements UserInterface
 
     /**
      * @ORM\Column(type="string", length=150)
-     * )
+     * @Assert\NotBlank
      */
     private $password;
 
     /**
      * @ORM\Column(type="datetime")
+     * @Assert\NotBlank
      */
     private $date_naissance;
 
     /**
      * @ORM\Column(type="string", length=1)
-     * )
+     * @Assert\NotBlank
      */
     private $sexe;
 
